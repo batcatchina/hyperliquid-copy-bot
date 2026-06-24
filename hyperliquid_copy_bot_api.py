@@ -17,10 +17,15 @@ TARGET_WALLET  = "0x3Db8f7bC6D744bEAE458207C85F46B5d0349e5ef"
 COPY_RATIO     = 0.10      # 跟单比例 10%
 MAX_POSITION   = 100.0     # 单笔最大仓位$
 POLL_INTERVAL  = 15       # 秒
-TESTNET        = True      # True=模拟/测试网下单 False=主网真单
+TESTNET        = False     # True=模拟/测试网下单 False=主网真单
 
 INFO_URL   = "https://api.hyperliquid.xyz/info"          # 监控永远用主网
 TRADE_URL  = "https://api.hyperliquid-testnet.xyz" if TESTNET else "https://api.hyperliquid.xyz"
+
+# ========== API签名配置 (主网实盘必须) ==========
+# API钱包私钥 (从环境变量读取，不要硬编码)
+import os
+API_WALLET_SECRET_KEY = os.getenv("HL_SECRET_KEY", "0x3b8cfF67f3a5DdbDA610bdB7B0eC74cCA0fd3F55")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger("copybot")
