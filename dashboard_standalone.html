@@ -292,6 +292,22 @@
     <!-- Real Account Fills -->
     <div class="card">
       <div class="card-title">📜 实盘成交记录</div>
+    <!-- User Account Summary -->
+    <div class="card">
+      <div class="card-title">📊 账户概览</div>
+      <div id="accountSummary">
+        <div class="no-data">加载中...</div>
+      </div>
+    </div>
+
+    <!-- User Account Positions -->
+    <div class="card">
+      <div class="card-title">📋 账户持仓</div>
+      <div id="accountPositions">
+        <div class="no-data">加载中...</div>
+      </div>
+    </div>
+
       <div id="userFillsContainer">
         <div class="no-data">加载中...</div>
       </div>
@@ -403,6 +419,103 @@
       return resp.json();
     }
     
+
+    // ============ RENDER ACCOUNT SUMMARY ============
+    async function fetchAndRenderAccountSummary() {
+      try {
+        const data = await hlPost({ type: 'clearinghouseState', user: USER_WALLET });
+        const margin = data.marginSummary || {};
+        const accountValue = parseFloat(margin.accountValue || 0);
+        const totalPos = parseFloat(margin.totalNtlPos || 0);
+        const marginUsed = parseFloat(margin.totalMarginUsed || 0);
+        const withdrawable = parseFloat(data.withdrawable || 0);
+        const rawUsd = parseFloat(margin.totalRawUsd || 0);
+        const pnl = rawUsd; // 总体PnL
+
+        const html = `
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">账户净值</div>
+              <div class="stat-value green">${formatNum(accountValue)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">持仓总额</div>
+              <div class="stat-value">${formatNum(totalPos)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">保证金使用</div>
+              <div class="stat-value yellow">${formatNum(marginUsed)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">总盈亏</div>
+              <div class="stat-value ${pnl >= 0 ? 'green' : 'red'}">${formatNum(pnl)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">可提款</div>
+              <div class="stat-value">${formatNum(withdrawable)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">账户状态</div>
+              <div class="stat-value green">● 正常</div>
+            </div>
+          </div>
+        `;
+        document.getElementById('accountSummary').innerHTML = html;
+      } catch (e) {
+        document.getElementById('accountSummary').innerHTML = 
+          '<div class="no-data">暂无数据</div>';
+      }
+    }
+
+    // ============ RENDER ACCOUNT POSITIONS ============
+    async function fetchAndRenderAccountPositions() {
+      try {
+        const data = await hlPost({ type: 'clearinghouseState', user: USER_WALLET });
+        const positions = data.assetPositions || [];
+        const allMids = await hlPost({ type: 'allMids' });
+
+        if (positions.length === 0) {
+          document.getElementById('accountPositions').innerHTML = 
+            '<div class="no-data">暂无持仓</div>';
+          return;
+        }
+
+        let html = `<div class="positions-table-wrap"><table class="positions-table"><thead><tr>
+          <th>币种</th><th>方向</th><th>数量</th><th>开仓价</th><th>当前价</th><th>未实现</th>
+        </tr></thead><tbody>`;
+
+        for (const pos of positions) {
+          const p = pos.position || pos;
+          const coin = p.coin;
+          const mid = parseFloat(allMids[coin] || 0);
+          const entryPx = parseFloat(p.entryPx || 0);
+          const unrealizedPnl = parseFloat(p.unrealizedPnl || 0);
+          const roe = parseFloat(p.returnOnEquity || 0) * 100;
+          const side = parseFloat(p.szi) >= 0 ? '多' : '空';
+          const sideClass = side === '多' ? 'green' : 'red';
+          const pnlClass = unrealizedPnl >= 0 ? 'green' : 'red';
+          const size = formatQty(Math.abs(parseFloat(p.szi)));
+          const currentPx = formatNum(mid, 4);
+          const entryStr = formatNum(entryPx, 4);
+
+          html += `<tr>
+            <td class="coin-name">${coin}</td>
+            <td class="${sideClass}">${side}</td>
+            <td>${size}</td>
+            <td>${entryStr}</td>
+            <td>${currentPx}</td>
+            <td class="${pnlClass}">${formatNum(unrealizedPnl)} (${roe.toFixed(2)}%)</td>
+          </tr>`;
+        }
+
+        html += '</tbody></table></div>';
+        document.getElementById('accountPositions').innerHTML = html;
+      } catch (e) {
+        document.getElementById('accountPositions').innerHTML = 
+          '<div class="no-data">暂无持仓</div>';
+      }
+    }
+
     // ============ RENDER USER (REAL ACCOUNT) FILLS ============
     async function fetchAndRenderUserFills() {
       try {
