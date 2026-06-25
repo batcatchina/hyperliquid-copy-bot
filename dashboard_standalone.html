@@ -711,9 +711,12 @@
       btn.textContent = '刷新中...';
       
       try {
+        await fetchAndRenderAccountSummary();
+        await fetchAndRenderAccountPositions();
         await fetchAndRenderUserFills();
         await fetchAndRenderTargetWallet();
         updateLastTime();
+        clearErrors();
       } catch (err) {
         console.error('Refresh error:', err);
         showError(`刷新失败: ${err.message}`);
