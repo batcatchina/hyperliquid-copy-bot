@@ -289,51 +289,6 @@
     <!-- Error Container -->
     <div id="errorContainer"></div>
     
-    <!-- SIMULATE Badge -->
-    <div class="badge-row">
-      <span class="badge-sim">SIMULATE</span>
-      <span class="badge-label">🎭 模拟账户</span>
-    </div>
-    
-    <!-- Sim Account Cards -->
-    <div class="card">
-      <div class="card-title">📊 模拟账户概览</div>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-label">模拟净值</div>
-          <div class="stat-value green" id="simEquity">--</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">已实现盈亏</div>
-          <div class="stat-value" id="simRealized">--</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">未实现盈亏</div>
-          <div class="stat-value" id="simUnrealized">--</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">手续费</div>
-          <div class="stat-value yellow" id="simFees">--</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">模拟成交数</div>
-          <div class="stat-value purple" id="simOrders">--</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">模拟持仓数</div>
-          <div class="stat-value" id="simPositions">--</div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Sim Positions -->
-    <div class="card">
-      <div class="card-title">📋 模拟持仓明细</div>
-      <div id="simPositionsContainer">
-        <div class="no-data">加载中...</div>
-      </div>
-    </div>
-    
     <!-- Real Account Fills -->
     <div class="card">
       <div class="card-title">📜 实盘成交记录</div>
@@ -381,21 +336,6 @@
     const USER_WALLET = '0xdAEb07e164D788CB14DbFfa7581170f9a3EB08a5';
     const POLL_INTERVAL = 10000; // 10 seconds
     const HL_API = 'https://api.hyperliquid.xyz/info';
-    
-    // ============ SIM STATE (from sim_state.json) ============
-    // This data is synced from sim_state.json for standalone operation
-    const SIM_STATE = {
-      cash: 10000.0,
-      capital: 10000.0,
-      fees: 0.226994,
-      order_counter: 3,
-      realized_pnl: 0.0,
-      positions: {
-        "HYPE": { size: 5.0, entry_px: 72.1825, unrealized_pnl: 0.0 },
-        "ETH": { size: 0.05, entry_px: 1753.75, unrealized_pnl: 0.0 },
-        "XRP": { size: -100.0, entry_px: 1.18885, unrealized_pnl: 0.0 }
-      }
-    };
     
     // ============ HELPER FUNCTIONS ============
     function formatNum(n, decimals = 2) {
@@ -461,73 +401,6 @@
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       return resp.json();
-    }
-    
-    // ============ RENDER SIM ACCOUNT ============
-    function renderSimAccount() {
-      const equity = SIM_STATE.cash + SIM_STATE.realized_pnl + 
-        Object.values(SIM_STATE.positions).reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0);
-      
-      const realizedClass = SIM_STATE.realized_pnl >= 0 ? 'green' : 'red';
-      const unrealizedPnl = Object.values(SIM_STATE.positions).reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0);
-      const unrealizedClass = unrealizedPnl >= 0 ? 'green' : 'red';
-      
-      document.getElementById('simEquity').textContent = formatNum(equity);
-      document.getElementById('simRealized').textContent = formatNum(SIM_STATE.realized_pnl);
-      document.getElementById('simRealized').className = `stat-value ${realizedClass}`;
-      document.getElementById('simUnrealized').textContent = formatNum(unrealizedPnl);
-      document.getElementById('simUnrealized').className = `stat-value ${unrealizedClass}`;
-      document.getElementById('simFees').textContent = formatNum(SIM_STATE.fees, 4);
-      document.getElementById('simOrders').textContent = SIM_STATE.order_counter;
-      document.getElementById('simPositions').textContent = Object.keys(SIM_STATE.positions).length;
-    }
-    
-    function renderSimPositions(allMids) {
-      const container = document.getElementById('simPositionsContainer');
-      const positions = Object.entries(SIM_STATE.positions);
-      
-      if (positions.length === 0) {
-        container.innerHTML = '<div class="no-data">暂无持仓</div>';
-        return;
-      }
-      
-      let html = `
-        <table class="pos-table">
-          <thead>
-            <tr>
-              <th>资产</th>
-              <th>方向</th>
-              <th>数量</th>
-              <th>开仓价</th>
-              <th>当前价</th>
-              <th>未实现</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-      
-      for (const [coin, pos] of positions) {
-        const isLong = pos.size >= 0;
-        const rowClass = isLong ? 'pos-long' : 'pos-short';
-        const sideClass = isLong ? 'side-buy' : 'side-sell';
-        const sideText = isLong ? 'BUY' : 'SELL';
-        const pnlClass = (pos.unrealized_pnl || 0) >= 0 ? 'pnl-pos' : 'pnl-neg';
-        const currentPx = allMids && allMids[coin] ? parseFloat(allMids[coin]) : pos.entry_px;
-        
-        html += `
-          <tr class="${rowClass}">
-            <td class="coin-name">${coin}</td>
-            <td class="${sideClass}">${sideText}</td>
-            <td>${formatQty(pos.size)}</td>
-            <td>${formatNum(pos.entry_px, 4)}</td>
-            <td>${formatNum(currentPx, 4)}</td>
-            <td class="${pnlClass}">${formatNum(pos.unrealized_pnl || 0)}</td>
-          </tr>
-        `;
-      }
-      
-      html += '</tbody></table>';
-      container.innerHTML = html;
     }
     
     // ============ RENDER USER (REAL ACCOUNT) FILLS ============
@@ -706,8 +579,6 @@
           fillsContainer.innerHTML = html;
         }
         
-        // Also update sim positions with latest mids
-        renderSimPositions(allMids);
         
       } catch (err) {
         console.error('Target wallet fetch error:', err);
@@ -727,7 +598,6 @@
       btn.textContent = '刷新中...';
       
       try {
-        renderSimAccount();
         await fetchAndRenderUserFills();
         await fetchAndRenderTargetWallet();
         updateLastTime();
