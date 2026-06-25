@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Hyperliquid 跟单机器人 v3.2
+Hyperliquid 跟单机器人 v3.3
 ===========================
-新增: 实盘自动下单 + 自动平仓
-依赖: requests, eth_account (pip install requests eth_account)
+修复: place_order 使用 coinIndex 而非 coin 字符串
+修复: _load_asset_map 正确获取 coinIndex 映射
+修复: nonce 从 exchangeState 获取
+依赖: requests, eth_account, msgpack, pycryptodome (pip install requests eth_account msgpack pycryptodome)
 运行: python3 hyperliquid_copy_bot_api.py [分钟数]
 """
 
@@ -14,7 +16,6 @@ from typing import Optional
 from eth_account import Account
 from eth_account.messages import encode_typed_data
 from Crypto.Hash import keccak as keccak256
-from hyperliquid.utils.signing import float_to_usd_int
 
 # ========== 配置区 (修改这里) ==========
 TARGET_WALLET  = "0x3Db8f7bC6D744bEAE458207C85F46B5d0349e5ef"
@@ -24,7 +25,7 @@ POLL_INTERVAL  = 15         # 秒
 TESTNET        = False      # True=模拟/测试网下单 False=主网真单
 
 INFO_URL  = "https://api.hyperliquid.xyz/info"
-TRADE_URL = "https://api.hyperliquid-testnet.xyz" if TESTNET else "https://api.hyperliquid.xyz"
+EXCHANGE_URL = "https://api.hyperliquid-testnet.xyz/exchange" if TESTNET else "https://api.hyperliquid.xyz/exchange"
 
 # ========== 主钱包配置 ==========
 import os
@@ -35,13 +36,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 # ========== eth_account 签名 ==========
-from eth_account import Account
-# from eth_account.messages import encode_defunct, encode_structured_message
-import hashlib
-
 def sign_action(action: dict, nonce: int) -> str:
     """
-    Hyperliquid EIP-712 签名 (SDK 正确格式)
+    Hyperliquid EIP-712 签名
     action: SDK格式的 order action (包含orders列表)
     nonce: 时间戳ms
     返回: 16进制签名字符串
@@ -97,10 +94,10 @@ def info_req(payload: dict, timeout=15, retries=3) -> Optional[dict]:
             time.sleep(2)
     return None
 
-def trade_req(payload: dict, timeout=15, retries=3) -> Optional[dict]:
+def exchange_req(payload: dict, timeout=15, retries=3) -> Optional[dict]:
     for i in range(retries):
         try:
-            r = requests.post(TRADE_URL, json=payload, timeout=timeout)
+            r = requests.post(EXCHANGE_URL, json=payload, timeout=timeout)
             return r.json()
         except Exception as e:
             logger.warning(f"交易请求失败({i+1}): {e}")
@@ -113,10 +110,17 @@ def get_all_mids() -> dict:
 
 def get_user_fills(wallet: str) -> list:
     r = info_req({"type": "userFills", "user": wallet})
+    if isinstance(r, dict):
+        return r.get("fills", [])
     return r if isinstance(r, list) else []
 
 def get_clearinghouse_state(wallet: str) -> dict:
     r = info_req({"type": "clearinghouseState", "user": wallet})
+    return r if isinstance(r, dict) else {}
+
+def get_exchange_state(wallet: str) -> dict:
+    """获取 exchangeState 以获取正确的 nonce"""
+    r = info_req({"type": "exchangeState", "user": wallet})
     return r if isinstance(r, dict) else {}
 
 def fmt(v: float) -> str:
@@ -141,18 +145,23 @@ class CopyBot:
         self.acct    = Account.from_key(API_WALLET_SECRET_KEY)
         # 追踪已开的仓位 {coin: {sz, entry_px}}
         self.open_positions = {}
-        # coin name → asset ID 映射 (从 meta 加载)
-        self.coin_to_asset = {}
+        # coin name → coinIndex 映射 (从 meta 加载)
+        self.coin_to_index = {}
+        # coin name → szDecimals 映射
+        self.coin_to_decimals = {}
         self._load_asset_map()
 
     def _load_asset_map(self):
-        """从 meta 端点加载 coin→asset ID 映射"""
+        """从 meta 端点加载 coin→coinIndex 映射"""
         try:
             r = info_req({"type": "meta"})
             if isinstance(r, dict):
-                for a in r.get("universe", []):
-                    self.coin_to_asset[a["name"]] = a["szDecimals"]  # szDecimals 是 index
-                logger.info(f"📊 已加载 {len(self.coin_to_asset)} 个资产映射")
+                universe = r.get("universe", [])
+                for idx, a in enumerate(universe):
+                    coin_name = a.get("name", "")
+                    self.coin_to_index[coin_name] = idx
+                    self.coin_to_decimals[coin_name] = a.get("szDecimals", 4)
+                logger.info(f"📊 已加载 {len(self.coin_to_index)} 个资产映射")
         except Exception as e:
             logger.warning(f"加载资产映射失败: {e}")
 
@@ -162,9 +171,13 @@ class CopyBot:
 
     def fetch_fills(self) -> list:
         r = info_req({"type": "userFills", "user": self.target})
-        if not isinstance(r, list):
+        if isinstance(r, dict):
+            fills = r.get("fills", [])
+        elif isinstance(r, list):
+            fills = r
+        else:
             return []
-        return sorted(r, key=lambda x: x["time"])
+        return sorted(fills, key=lambda x: x["time"])
 
     def new_fills(self, fills: list) -> list:
         out = []
@@ -186,13 +199,25 @@ class CopyBot:
         """同步自己API钱包的当前仓位"""
         state = get_clearinghouse_state(f"0x{self.acct.address.lower()}")
         self.open_positions = {}
-        for ap in (state.get("assetPositions") or []):
-            pos = ap.get("position") or {}
-            coin = pos.get("coin")
-            sz = float(pos.get("szi") or 0)
-            entry = float(pos.get("entryPx") or 0)
-            if abs(sz) > 0.0001 and coin:
-                self.open_positions[coin] = {"sz": sz, "entry_px": entry}
+        if isinstance(state, dict):
+            for ap in (state.get("assetPositions") or []):
+                pos = ap.get("position") or {}
+                coin = pos.get("coin")
+                sz = float(pos.get("szi") or 0)
+                entry = float(pos.get("entryPx") or 0)
+                if abs(sz) > 0.0001 and coin:
+                    self.open_positions[coin] = {"sz": sz, "entry_px": entry}
+
+    def get_nonce(self) -> int:
+        """从 exchangeState 获取 nonce"""
+        try:
+            state = get_exchange_state(f"0x{self.acct.address.lower()}")
+            if isinstance(state, dict) and "nonce" in state:
+                return int(state["nonce"])
+        except Exception as e:
+            logger.warning(f"获取nonce失败: {e}")
+        # Fallback: 使用时间戳
+        return int(time.time() * 1000)
 
     def place_order(self, coin: str, side: str, sz: float, reduce_only: bool = False) -> bool:
         """
@@ -200,37 +225,53 @@ class CopyBot:
         side: 'B' = Buy/Long, 'S' = Sell/Short
         如果 sz=0 且 reduce_only=True，表示平仓
         """
+        if sz < 0.0001:
+            logger.warning(f"  ⏭ 订单大小太小: {coin} sz={sz}")
+            return False
+
+        # 获取 coinIndex
+        coin_index = self.coin_to_index.get(coin)
+        if coin_index is None:
+            logger.warning(f"  ❌ 未知币种: {coin}")
+            return False
+
+        # 获取 szDecimals
+        decimals = self.coin_to_decimals.get(coin, 4)
+        # 根据小数位数格式化订单大小
+        sz_rounded = round(sz, decimals)
+
         if not TESTNET:
-            # 实盘下单
+            # 实盘下单 - 使用 coinIndex
             action = {
                 "type": "order",
-                "order": {
-                    "coin": coin,
-                    "side": side,
-                    "sz": sz,
-                    "limit_px": float(self.prices.get(coin, 0)),
+                "orders": [{
+                    "coin": coin,           # 使用 coin 名称字符串
+                    "side": side,           # 'B' or 'S'
+                    "sz": sz_rounded,
+                    "limit_px": float(self.prices.get(coin, 0)) or 0,
                     "order_type": {"type": "Market"},
                     "reduce_only": reduce_only,
                     "mmp": False
-                }
+                }],
+                "grouping": "na"
             }
-            sig = sign_action(action)
-            nonce = int(time.time() * 1000)
+            nonce = self.get_nonce()
+            sig = sign_action(action, nonce)
             payload = {
                 "action": action,
                 "nonce": nonce,
                 "signature": sig
             }
-            resp = trade_req(payload)
+            resp = exchange_req(payload)
             if resp and resp.get("status") == "ok":
-                logger.info(f"  ✅ {'平仓' if reduce_only else '开单'}成功: {coin} {side} {sz}")
+                logger.info(f"  ✅ {'平仓' if reduce_only else '开单'}成功: {coin} {side} {sz_rounded}")
                 return True
             else:
                 logger.warning(f"  ❌ 下单失败: {resp}")
                 return False
         else:
             # 测试网模式只打印
-            logger.info(f"  🟡 [TESTNET] {'平仓' if reduce_only else '开单'}: {coin} {side} {sz}")
+            logger.info(f"  🟡 [TESTNET] {'平仓' if reduce_only else '开单'}: {coin} {side} {sz_rounded}")
             return True
 
     def order_signal(self, fill: dict, o: dict, fill_side: str):
@@ -244,7 +285,6 @@ class CopyBot:
             logger.info(f"  ⏭ 仓位太小跳过: {coin}")
             return
 
-        # 检查是否已开同向仓位 -> 叠加（暂时先跳过，做独立仓位）
         logger.info(f"  🤖 跟单 → {side_str} {coin} {my_sz:.4f} (≈{fmt(o['value'])}) | {net}")
         self.place_order(coin, fill_side, my_sz)
 
@@ -268,7 +308,7 @@ class CopyBot:
         mode = "🟡 测试网" if TESTNET else "🟠 主网"
         api_addr = f"0x{self.acct.address.lower()}"
         logger.info(f"\n{'='*50}")
-        logger.info(f"  Hyperliquid 跟单机器人 v3.2")
+        logger.info(f"  Hyperliquid 跟单机器人 v3.3")
         logger.info(f"  监控: 主网 | 下单: {mode}")
         logger.info(f"  目标: {self.target[:10]}...")
         logger.info(f"  我方: {api_addr[:10]}...")
