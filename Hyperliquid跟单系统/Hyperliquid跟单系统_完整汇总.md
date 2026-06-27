@@ -176,3 +176,14 @@ python3 run.py live 60
 - Hyperliquid 官网：https://hyperliquid.com
 - API 文档：https://hyperliquid.gitbook.io/hyperliquid-docs
 - 仓库地址：https://github.com/batcatchina/hyperliquid-copy-bot
+
+---
+
+## 九、部署记录
+
+| 时间 | URL | 状态 |
+|------|-----|------|
+| 2026-06-27 | https://public-seven-phi-49.vercel.app | ✅ 生效中 |
+| 历史部署 | https://hl-deploy-jhcdf4gva-batcatchinas-projects.vercel.app | ❌ 已失效 |
+| 历史部署 | https://fresh-dash-k0jlwk7gb-batcatchinas-projects.vercel.app | ❌ 已失效 |
+| 历史部署 | https://dashdeploy-i3ebhpjpe-batcatchinas-projects.vercel.app | ❌ 已失效 |
