@@ -1,0 +1,32 @@
+分析以下Hyperliquid跟单机器人的两个文件，找出重大问题：
+
+## Bot代码 (hyperliquid_copy_bot_api.py)
+```python
+"""Hyperliquid 跟单机器人 v3.2
+依赖: requests, eth_account
+配置: TARGET_WALLET=0x3Db8f7bC6D744bEAE458207C85F46B5d0349e5ef, COPY_RATIO=0.10, TESTNET=False
+签名: EIP-712, phantom_agent, keccak256+msgpack
+核心: CopyBot.run() 主循环，poll=15秒，抓userFills检测新成交后跟单
+"""
+
+# 关键代码片段：
+# sign_action(): keccak(msgpack(action)+nonce+bytes(8,"big")+b"\x00") -> phantom_agent -> EIP-712签名
+# place_order(): order_action + sign_action -> trade_req payload
+# order_signal(): calc_size按COPY_RATIO和MAX_POSITION计算跟单大小
+# handle_close(): 检测closedPnl!=0的成交，执行平仓
+# Bot初始化时加载coin->asset映射(szDecimals做index)，但实际下单时coin直接传字符串没用asset ID
+```
+
+## Dashboard代码 (dashboard_standalone.html)
+```javascript
+// 配置：TARGET_WALLET=0x3Db8f7bC6D744bEAE458207C85F46B5d0349e5ef, USER_WALLET=0xdAEb07e164D788CB14DbFfa7581170f9a3EB08a5
+// API: clearinghouseState(账户概览+持仓), userFills(成交记录)
+// 渲染: accountSummary账户概览, accountPositions账户持仓, userFills实盘成交, targetOverview+targetPositions目标钱包, fills最近成交
+// 轮询: POLL_INTERVAL=10000ms, refreshAll()串行await
+```
+
+请用中文回答：
+1. Bot代码中的重大问题或bug
+2. Dashboard代码中的重大问题
+3. 两者之间不一致的地方
+每点用一句话，控制在200字以内。

@@ -1,0 +1,2 @@
+=== Codex Task (2026-06-25) ===
+Vercel Token: <YOUR_VERCEL_TOKEN>

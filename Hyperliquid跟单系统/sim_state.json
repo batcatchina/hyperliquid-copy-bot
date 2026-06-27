@@ -1,0 +1,59 @@
+{
+  "cash": 10000.0,
+  "capital": 10000.0,
+  "fees": 0.226994,
+  "order_counter": 3,
+  "realized_pnl": 0.0,
+  "orders": [
+    {
+      "id": "SIM_000001",
+      "coin": "HYPE",
+      "side": "buy",
+      "size": 5.0,
+      "px": 72.1825,
+      "filled_px": 72.1825,
+      "time": "2026-06-18T08:42:43",
+      "realized_pnl": 0.0,
+      "closed_size": 0.0
+    },
+    {
+      "id": "SIM_000002",
+      "coin": "ETH",
+      "side": "buy",
+      "size": 0.05,
+      "px": 1753.75,
+      "filled_px": 1753.75,
+      "time": "2026-06-18T08:42:44",
+      "realized_pnl": 0.0,
+      "closed_size": 0.0
+    },
+    {
+      "id": "SIM_000003",
+      "coin": "XRP",
+      "side": "sell",
+      "size": 100.0,
+      "px": 1.18885,
+      "filled_px": 1.18885,
+      "time": "2026-06-18T08:42:45",
+      "realized_pnl": 0.0,
+      "closed_size": 0.0
+    }
+  ],
+  "positions": {
+    "HYPE": {
+      "size": 5.0,
+      "entry_px": 72.1825,
+      "unrealized_pnl": 0.0
+    },
+    "ETH": {
+      "size": 0.05,
+      "entry_px": 1753.75,
+      "unrealized_pnl": 0.0
+    },
+    "XRP": {
+      "size": -100.0,
+      "entry_px": 1.18885,
+      "unrealized_pnl": 0.0
+    }
+  }
+}

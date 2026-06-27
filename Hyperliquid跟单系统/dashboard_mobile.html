@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Hyperliquid Portfolio</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #222;
+      --border: #2a2a2a;
+      --accent: #00ff88;
+      --accent-dim: rgba(0,255,136,0.15);
+      --danger: #ff5252;
+      --danger-dim: rgba(255,82,82,0.15);
+      --warn: #ffca28;
+      --text: #e0e0e0;
+      --muted: #888;
+      --font: 'Courier New', Courier, monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      padding: 12px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+    .last-update {
+      font-size: 0.6rem;
+      color: var(--muted);
+    }
+
+    /* ── Mode Badge ── */
+    .mode-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      border: 1px solid;
+    }
+    .badge.monitor {
+      background: rgba(255,202,40,0.15);
+      color: var(--warn);
+      border-color: var(--warn);
+    }
+    .badge.live {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .badge.simulate {
+      background: rgba(130,80,255,0.15);
+      color: #c084fc;
+      border-color: #c084fc;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+    .dot.monitor { background: var(--warn); }
+    .dot.live { background: var(--accent); animation: pulse 1.5s infinite; }
+    .dot.simulate { background: #c084fc; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .btn-mode {
+      padding: 6px 14px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .btn-mode.enabled {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ── Cards ── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .card .label {
+      font-size: 0.55rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .card .value {
+      font-size: 0.95rem;
+      font-weight: bold;
+      word-break: break-all;
+    }
+    .val-pos { color: var(--accent); }
+    .val-neg { color: var(--danger); }
+    .val-warn { color: var(--warn); }
+
+    /* ── Section ── */
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      padding-left: 2px;
+    }
+
+    /* ── Positions Table ── */
+    .pos-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.72rem;
+      background: var(--surface);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pos-table th {
+      color: var(--muted);
+      font-weight: normal;
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .pos-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .pos-table tr:last-child td { border-bottom: none; }
+    .pos-table tr.long { background: rgba(0,255,136,0.04); }
+    .pos-table tr.short { background: rgba(255,82,82,0.04); }
+
+    /* ── Sim Position Rows (div-based) ── */
+    .pos-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.68rem;
+    }
+    .pos-row:last-child { border-bottom: none; }
+    .pos-row.pos-long { background: rgba(0,255,136,0.04); }
+    .pos-row.pos-short { background: rgba(255,82,82,0.04); }
+    .pos-row .pos-coin { font-weight: bold; color: var(--accent); min-width: 50px; }
+    .pos-row .pos-side { font-size: 0.58rem; padding: 2px 5px; border-radius: 3px; min-width: 30px; text-align: center; }
+    .pos-long .pos-side { background: var(--accent-dim); color: var(--accent); }
+    .pos-short .pos-side { background: var(--danger-dim); color: var(--danger); }
+    .pos-row .pos-size { flex: 1; text-align: right; }
+    .pos-row .pos-entry { color: var(--muted); font-size: 0.6rem; }
+    .pos-row .pos-mark { color: var(--muted); font-size: 0.6rem; }
+    .pos-row .pos-pnl { min-width: 60px; text-align: right; }
+
+    .side-long { color: var(--accent); }
+    .side-short { color: var(--danger); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pnl-pos { color: var(--accent); }
+    .pnl-neg { color: var(--danger); }
+
+    /* ── Fills ── */
+    .fills-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .fill-item {
+      display: grid;
+      grid-template-columns: 70px 50px 1fr 80px;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.7rem;
+      align-items: center;
+    }
+    .fill-item:last-child { border-bottom: none; }
+    .fill-time { color: var(--muted); font-size: 0.6rem; }
+    .fill-side { font-weight: bold; }
+    .fill-side.buy { color: var(--accent); }
+    .fill-side.sell { color: var(--danger); }
+    .fill-info { display: flex; flex-direction: column; gap: 2px; }
+    .fill-coin { font-weight: bold; }
+    .fill-size { color: var(--muted); font-size: 0.6rem; }
+    .fill-price { text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* ── Error / Loading ── */
+    .error-banner {
+      background: rgba(255,82,82,0.1);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--danger);
+      font-size: 0.75rem;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    /* ── Empty ── */
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 380px) {
+      .card-grid { grid-template-columns: repeat(2, 1fr); }
+      .pos-table { font-size: 0.68rem; }
+      .fill-item { grid-template-columns: 60px 45px 1fr 70px; font-size: 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>HYPERLIQUID 跟单</h1>
+  <div class="last-update" id="last-update">—</div>
+</header>
+
+<!-- Mode Toggle -->
+<div class="mode-section">
+  <div class="badge monitor" id="mode-badge">
+    <span class="dot monitor" id="mode-dot"></span>
+    <span id="mode-text">MONITOR</span>
+  </div>
+  <button class="btn-mode" id="btn-toggle">切换 LIVE</button>
+</div>
+
+<!-- Error Banner -->
+<div id="error-banner" class="error-banner" style="display:none"></div>
+
+<!-- Account Overview -->
+<div class="card-grid" id="account-cards">
+  <div class="card">
+    <div class="label">账户净值</div>
+    <div class="value" id="card-equity">—</div>
+  </div>
+  <div class="card">
+    <div class="label">保证金使用</div>
+    <div class="value" id="card-margin-used">—</div>
+  </div>
+  <div class="card">
+    <div class="label">可提取</div>
+    <div class="value" id="card-withdrawable">—</div>
+  </div>
+</div>
+
+<!-- SIM Account Overview (SIMULATE mode) -->
+<div class="section" id="sim-section" style="display:none">
+  <div class="section-title">🎭 模拟账户</div>
+  <div class="card-grid">
+    <div class="card">
+      <div class="label">模拟净值</div>
+      <div class="value" id="sim-equity" style="color:var(--accent)">—</div>
+    </div>
+    <div class="card">
+      <div class="label">已实现盈亏</div>
+      <div class="value" id="sim-realized">—</div>
+    </div>
+    <div class="card">
+      <div class="label">未实现盈亏</div>
+      <div class="value" id="sim-unreal">—</div>
+    </div>
+    <div class="card">
+      <div class="label">手续费</div>
+      <div class="value" id="sim-fees">—</div>
+    </div>
+    <div class="card">
+      <div class="label">模拟成交数</div>
+      <div class="value" id="sim-orders">—</div>
+    </div>
+    <div class="card">
+      <div class="label">模拟持仓</div>
+      <div class="value" id="sim-positions-count">—</div>
+    </div>
+  </div>
+  <div id="sim-positions-area" style="margin-top:8px"></div>
+</div>
+
+<!-- Positions -->
+<div class="section">
+  <div class="section-title">持仓 (最多8条)</div>
+  <div id="positions-area">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<!-- Daily Stats -->
+<div class="section">
+  <div class="section-title">当日统计</div>
+  <div class="card-grid">
+    <div class="card">
+      <div class="label">总持仓价值</div>
+      <div class="value" id="card-total-value">—</div>
+    </div>
+    <div class="card">
+      <div class="label">当日PnL</div>
+      <div class="value" id="card-daily-pnl">—</div>
+    </div>
+    <div class="card">
+      <div class="label">未实现PnL</div>
+      <div class="value" id="card-unreal-pnl">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Fills -->
+<div class="section">
+  <div class="section-title">最近成交 (最近10条)</div>
+  <div id="fills-area">
+    <div class="loading">加载中...</div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = 'https://api.hyperliquid.xyz/info';
+  const WALLET = '0x3Db8f7bC6D744bEAE458207C85F46B5d0349e5ef';
+
+  let allMids = {};
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function fmt(n, dec = 4) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toFixed(dec);
+  }
+
+  function fmtUsd(n, dec = 2) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return '$' + Number(n).toFixed(dec);
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch {
+      return iso;
+    }
+  }
+
+  function pnlClass(v) {
+    if (v > 0) return 'val-pos pnl-pos';
+    if (v < 0) return 'val-neg pnl-neg';
+    return '';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-banner');
+    el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('error-banner').style.display = 'none';
+  }
+
+  function updateLastTime() {
+    document.getElementById('last-update').textContent = '更新: ' + new Date().toLocaleTimeString('zh-CN');
+  }
+
+  // ── API Calls ──────────────────────────────────────────────────
+  async function apiPost(body) {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  async function fetchAllMids() {
+    try {
+      const data = await apiPost({ type: 'allMids' });
+      allMids = data || {};
+    } catch (e) {
+      console.warn('allMids failed:', e);
+    }
+  }
+
+  async function fetchClearinghouseState() {
+    const data = await apiPost({
+      type: 'clearinghouseState',
+      user: WALLET
+    });
+    return data;
+  }
+
+  async function fetchUserFills() {
+    const data = await apiPost({
+      type: 'userFills',
+      user: WALLET
+    });
+    return data;
+  }
+
+  async function fetchBotState() {
+    // Fetch bot state (sim_account) from local dashboard API
+    try {
+      const resp = await fetch('http://localhost:5050/api/state');
+      if (!resp.ok) return null;
+      return await resp.json();
+    } catch (e) {
+      return null;  // Bot not running or unreachable
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────
+  function renderAccount(data) {
+    const m = data && data.marginSummary;
+    if (!m) {
+      document.getElementById('card-equity').textContent = '—';
+      document.getElementById('card-margin-used').textContent = '—';
+      document.getElementById('card-withdrawable').textContent = '—';
+      return;
+    }
+
+    const equity = parseFloat(m.accountValue || 0);
+    const marginUsed = parseFloat(m.totalMarginUsed || 0);
+    const withdrawable = parseFloat(data.withdrawable || 0);
+
+    document.getElementById('card-equity').textContent = fmtUsd(equity);
+    document.getElementById('card-equity').className = 'value';
+
+    const marginEl = document.getElementById('card-margin-used');
+    marginEl.textContent = fmtUsd(marginUsed);
+    marginEl.className = 'value' + (marginUsed > 0 ? ' val-warn' : '');
+
+    const witEl = document.getElementById('card-withdrawable');
+    witEl.textContent = fmtUsd(withdrawable);
+    witEl.className = 'value' + (withdrawable < 0 ? ' val-neg' : ' val-pos');
+  }
+
+  function renderSimAccount(botState) {
+    const sec = document.getElementById('sim-section');
+    if (!botState || !botState.sim_account) {
+      sec.style.display = 'none';
+      return;
+    }
+    const sim = botState.sim_account;
+    const mode = botState.mode || '';
+
+    // Show section if SIMULATE mode
+    if (mode === 'SIMULATE') {
+      sec.style.display = 'block';
+      document.getElementById('mode-text').textContent = 'SIMULATE';
+      document.getElementById('mode-badge').className = 'badge simulate';
+      document.getElementById('mode-dot').className = 'dot simulate';
+    } else {
+      sec.style.display = 'none';
+      return;
+    }
+
+    const equity = parseFloat(sim.equity || 0);
+    const realized = parseFloat(sim.realized_pnl || 0);
+    const unreal = parseFloat(sim.unrealized_pnl || 0);
+    const fees = parseFloat(sim.fees || 0);
+    const orderCount = parseInt(sim.order_count || 0);
+    const positions = sim.positions || {};
+    const posKeys = Object.keys(positions);
+
+    document.getElementById('sim-equity').textContent = fmtUsd(equity);
+    document.getElementById('sim-equity').className = 'value ' + (equity >= 0 ? 'val-pos' : 'val-neg');
+
+    const realEl = document.getElementById('sim-realized');
+    realEl.textContent = fmtUsd(realized);
+    realEl.className = 'value ' + (realized >= 0 ? 'val-pos' : 'val-neg');
+
+    const unrealEl = document.getElementById('sim-unreal');
+    unrealEl.textContent = fmtUsd(unreal);
+    unrealEl.className = 'value ' + (unreal >= 0 ? 'val-pos' : 'val-neg');
+
+    document.getElementById('sim-fees').textContent = fmtUsd(fees);
+    document.getElementById('sim-orders').textContent = orderCount;
+    document.getElementById('sim-positions-count').textContent = posKeys.length;
+
+    // Render sim positions list
+    const area = document.getElementById('sim-positions-area');
+    if (posKeys.length === 0) {
+      area.innerHTML = '<div class="empty-state">暂无模拟持仓</div>';
+    } else {
+      let html = '<div class="pos-table">';
+      posKeys.forEach(coin => {
+        const p = positions[coin];
+        const size = parseFloat(p.size || 0);
+        const entryPx = parseFloat(p.entry_px || 0);
+        const markPx = parseFloat(p.mark_px || 0);
+        const upnl = parseFloat(p.unrealized_pnl || 0);
+        const side = size >= 0 ? 'BUY' : 'SELL';
+        const cls = side === 'BUY' ? 'pos-long' : 'pos-short';
+        html += `<div class="pos-row ${cls}">
+          <span class="pos-coin">${coin}</span>
+          <span class="pos-side">${side}</span>
+          <span class="pos-size">${fmt(size)}</span>
+          <span class="pos-entry">开${fmt(entryPx)}</span>
+          <span class="pos-mark">市${fmt(markPx)}</span>
+          <span class="pos-pnl ${upnl>=0?'val-pos':'val-neg'}">${fmtUsd(upnl)}</span>
+        </div>`;
+      });
+      html += '</div>';
+      area.innerHTML = html;
+    }
+  }
+
+  function renderPositions(data) {
+    const area = document.getElementById('positions-area');
+    const assetPositions = data && data.assetPositions;
+
+    if (!assetPositions || assetPositions.length === 0) {
+      area.innerHTML = '<div class="empty-state">暂无持仓</div>';
+      document.getElementById('card-total-value').textContent = '—';
+      document.getElementById('card-daily-pnl').textContent = '—';
+      document.getElementById('card-unreal-pnl').textContent = '—';
+      return;
+    }
+
+    // Get valid positions (size != 0) - assetPositions has {type, position} structure
+    let positions = [];
+    try {
+      positions = assetPositions
+        .filter(p => p && p.position)
+        .map(p => p.position)
+        .filter(p => {
+          const szi = parseFloat(p.szi || 0);
+          return szi !== 0;
+        });
+    } catch (e) {
+      console.warn('position parse error:', e);
+    }
+
+    if (positions.length === 0) {
+      area.innerHTML = '<div class="empty-state">暂无持仓</div>';
+      return;
+    }
+
+    // Limit to 8
+    positions = positions.slice(0, 8);
+
+    let totalValue = 0;
+    let totalUnrealPnl = 0;
+    let dailyPnl = 0;
+
+    let html = `<table class="pos-table"><thead><tr>
+      <th>币种</th><th>方向</th><th class="num">数量</th><th class="num">价值</th>
+      <th class="num">开仓价</th><th class="num">当前价</th><th class="num">未实现PnL</th>
+    </tr></thead><tbody>`;
+
+    positions.forEach(p => {
+      const coin = p.coin || '?';
+      const size = parseFloat(p.szi || 0);
+      const entryPx = parseFloat(p.entryPx || 0);
+      const positionValue = parseFloat(p.positionValue || 0);
+      const unrealPnl = parseFloat(p.unrealizedPnl || 0);
+      const markPx = allMids[coin] ? parseFloat(allMids[coin]) : (positionValue / Math.abs(size) || entryPx);
+      const posValue = Math.abs(size * markPx);
+      const isLong = size > 0;
+      const rowClass = isLong ? 'long' : 'short';
+      const sideClass = isLong ? 'side-long' : 'side-short';
+      const sideLabel = isLong ? '多' : '空';
+
+      totalValue += posValue;
+      totalUnrealPnl += unrealPnl;
+
+      html += `<tr class="${rowClass}">
+        <td>${coin}</td>
+        <td class="${sideClass}">${sideLabel}</td>
+        <td class="num">${fmt(Math.abs(size))}</td>
+        <td class="num">${fmtUsd(posValue)}</td>
+        <td class="num">${fmt(entryPx)}</td>
+        <td class="num">${fmt(markPx)}</td>
+        <td class="num ${pnlClass(unrealPnl)}">${fmtUsd(unrealPnl)}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+    area.innerHTML = html;
+
+    // Daily stats
+    document.getElementById('card-total-value').textContent = fmtUsd(totalValue);
+    document.getElementById('card-total-value').className = 'value';
+
+    const dailyEl = document.getElementById('card-daily-pnl');
+    dailyEl.textContent = fmtUsd(dailyPnl);
+    dailyEl.className = 'value ' + (dailyPnl > 0 ? 'val-pos' : dailyPnl < 0 ? 'val-neg' : '');
+
+    const unrealEl = document.getElementById('card-unreal-pnl');
+    unrealEl.textContent = fmtUsd(totalUnrealPnl);
+    unrealEl.className = 'value ' + (totalUnrealPnl > 0 ? 'val-pos' : totalUnrealPnl < 0 ? 'val-neg' : '');
+  }
+
+  function renderFills(fills) {
+    const area = document.getElementById('fills-area');
+
+    if (!fills || fills.length === 0) {
+      area.innerHTML = '<div class="empty-state">暂无成交记录</div>';
+      return;
+    }
+
+    // Show last 10
+    const list = fills.slice(0, 10);
+
+    let html = '<div class="fills-list">';
+    list.forEach(f => {
+      const time = fmtTime(f.time);
+      const side = (f.side || '').toLowerCase();
+      const coin = f.coin || f.symbol || '?';
+      const size = Math.abs(parseFloat(f.sz || 0));
+      const price = parseFloat(f.px || 0);
+      const sideLabel = side === 'buy' ? '多' : side === 'sell' ? '空' : side;
+      const sideClass = side === 'buy' ? 'buy' : side === 'sell' ? 'sell' : '';
+
+      html += `<div class="fill-item">
+        <span class="fill-time">${time}</span>
+        <span class="fill-side ${sideClass}">${sideLabel}</span>
+        <div class="fill-info">
+          <span class="fill-coin">${coin}</span>
+          <span class="fill-size">${fmt(size)}</span>
+        </div>
+        <span class="fill-price">${fmt(price)}</span>
+      </div>`;
+    });
+    html += '</div>';
+    area.innerHTML = html;
+  }
+
+  // ── Main Poll ──────────────────────────────────────────────────
+  async function poll() {
+    hideError();
+    try {
+      // Fetch allMids first for current prices
+      await fetchAllMids();
+
+      // Fetch clearinghouse, fills, and bot state in parallel
+      const [state, fills, botState] = await Promise.all([
+        fetchClearinghouseState().catch(e => { throw new Error('获取持仓失败: ' + e.message); }),
+        fetchUserFills().catch(e => { console.warn('fills failed:', e); return []; }),
+        fetchBotState().catch(e => { console.warn('bot state failed:', e); return null; })
+      ]);
+
+      renderAccount(state);
+      renderPositions(state);
+      renderFills(fills);
+      renderSimAccount(botState);
+      updateLastTime();
+
+    } catch (e) {
+      console.error('poll error:', e);
+      showError(e.message || '数据加载失败，请检查网络');
+    }
+  }
+
+  // ── Mode UI (static for now) ───────────────────────────────────
+  function updateModeUI(mode) {
+    const badge = document.getElementById('mode-badge');
+    const dot = document.getElementById('mode-dot');
+    const text = document.getElementById('mode-text');
+    const btn = document.getElementById('btn-toggle');
+
+    const live = mode === 'LIVE';
+    badge.className = `badge ${live ? 'live' : 'monitor'}`;
+    dot.className = `dot ${live ? 'live' : 'monitor'}`;
+    text.textContent = mode;
+    btn.textContent = live ? '切换 MONITOR' : '切换 LIVE';
+  }
+
+  // Mode button - for show, not functional
+  document.getElementById('btn-toggle').addEventListener('click', () => {
+    const current = document.getElementById('mode-text').textContent;
+    const next = current === 'LIVE' ? 'MONITOR' : 'LIVE';
+    updateModeUI(next);
+  });
+
+  // ── Init ───────────────────────────────────────────────────────
+  updateModeUI('MONITOR');
+  poll();
+  setInterval(poll, 10000);
+</script>
+</body>
+</html>

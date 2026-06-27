@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hyperliquid CopyBot Panel</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0f0f0f;
+      --surface:  #1a1a1a;
+      --border:   #2a2a2a;
+      --accent:   #00e676;
+      --accent2:  #76ff03;
+      --warn:     #ffca28;
+      --danger:   #ff5252;
+      --text:     #e0e0e0;
+      --muted:    #888;
+      --font:     'Courier New', Courier, monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 { font-size: 1.1rem; letter-spacing: 0.05em; color: var(--accent); }
+
+    .mode-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      border: 1px solid;
+    }
+    .badge.monitor { background: rgba(255,202,40,0.15); color: var(--warn);  border-color: var(--warn); }
+    .badge.live    { background: rgba(0,230,118,0.15);  color: var(--accent); border-color: var(--accent); }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot.monitor { background: var(--warn); }
+    .dot.live    { background: var(--accent); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .btn {
+      padding: 5px 14px;
+      border: 1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: rgba(0,230,118,0.1); }
+    .btn.danger { border-color: var(--danger); color: var(--danger); }
+    .btn.danger:hover { background: rgba(255,82,82,0.1); }
+
+    /* ── Cards grid ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .card .label { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+    .card .value { font-size: 1.15rem; font-weight: bold; }
+    .card .value.positive { color: var(--accent); }
+    .card .value.negative { color: var(--danger); }
+    .card .value.warn     { color: var(--warn); }
+
+    /* ── Positions ── */
+    .section-title {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-bottom: 20px;
+    }
+    th { color: var(--muted); font-weight: normal; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; }
+    td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .side-buy  { color: var(--accent); }
+    .side-sell { color: var(--danger); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pnl-pos { color: var(--accent); }
+    .pnl-neg { color: var(--danger); }
+
+    /* ── Log stream ── */
+    #log-stream {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      height: 220px;
+      overflow-y: auto;
+      font-size: 0.72rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    #log-stream .entry { border-bottom: 1px solid #222; padding: 2px 0; }
+    #log-stream .entry:last-child { border-bottom: none; }
+    #log-stream .ts { color: var(--muted); margin-right: 6px; }
+
+    /* ── Not running banner ── */
+    #not-running {
+      display: none;
+      background: rgba(255,202,40,0.1);
+      border: 1px solid var(--warn);
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: var(--warn);
+      font-size: 0.8rem;
+      margin-bottom: 16px;
+    }
+
+    /* ── Confirm modal ── */
+    #modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 32px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+    }
+    .modal-box h3 { margin-bottom: 10px; color: var(--danger); }
+    .modal-box p  { font-size: 0.8rem; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      table, #log-stream { font-size: 0.7rem; }
+      header h1 { font-size: 0.95rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Not running banner -->
+<div id="not-running">⚠️ bot_state.json not found — CopyBot may not be running.</div>
+
+<!-- Header -->
+<header>
+  <h1>◆ Hyperliquid CopyBot</h1>
+  <div class="mode-badge">
+    <span id="mode-badge" class="badge monitor">
+      <span id="mode-dot" class="dot monitor"></span>
+      <span id="mode-text">MONITOR</span>
+    </span>
+    <button class="btn" id="btn-toggle">Switch to LIVE</button>
+  </div>
+</header>
+
+<!-- Stats cards -->
+<div class="cards">
+  <div class="card">
+    <div class="label">Daily PnL</div>
+    <div class="value" id="card-daily-pnl">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Total PnL</div>
+    <div class="value" id="card-total-pnl">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Total Fills</div>
+    <div class="value" id="card-fills">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Copy Trades</div>
+    <div class="value" id="card-copy">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Errors</div>
+    <div class="value" id="card-errors">—</div>
+  </div>
+  <div class="card">
+    <div class="label">Uptime</div>
+    <div class="value" id="card-uptime">—</div>
+  </div>
+</div>
+
+<!-- Positions -->
+<div class="section-title">Positions</div>
+<div id="positions-area">
+  <table id="tbl-positions">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th class="num">Size</th>
+        <th class="num">Entry</th>
+        <th class="num">Mark</th>
+        <th class="num">Unreal. PnL</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-positions-body">
+      <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No open positions</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Recent Fills -->
+<div class="section-title">Recent Fills</div>
+<table id="tbl-fills">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Side</th>
+      <th>Symbol</th>
+      <th class="num">Size</th>
+      <th class="num">Price</th>
+    </tr>
+  </thead>
+  <tbody id="tbl-fills-body"></tbody>
+</table>
+
+<!-- Log stream -->
+<div class="section-title">Log Stream</div>
+<div id="log-stream"></div>
+
+<!-- Confirm modal -->
+<div id="modal-overlay">
+  <div class="modal-box">
+    <h3>⚠️ Confirm LIVE Mode</h3>
+    <p>Switching to LIVE mode will execute real trades on Hyperliquid with real funds. Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn danger" id="btn-confirm-live">Yes, go LIVE</button>
+      <button class="btn" id="btn-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = '/api';
+
+  // ── State ──────────────────────────────────────────────────────
+  let currentMode = 'MONITOR';
+  let pendingSwitch = null;
+  let logEntries = [];
+
+  // ── DOM refs ───────────────────────────────────────────────────
+  const $badge     = document.getElementById('mode-badge');
+  const $dot       = document.getElementById('mode-dot');
+  const $text      = document.getElementById('mode-text');
+  const $btnToggle = document.getElementById('btn-toggle');
+  const $modal     = document.getElementById('modal-overlay');
+  const $btnConfirm= document.getElementById('btn-confirm-live');
+  const $btnCancel = document.getElementById('btn-cancel');
+  const $notRun    = document.getElementById('not-running');
+  const $tblFills  = document.getElementById('tbl-fills-body');
+  const $tblPos    = document.getElementById('tbl-positions-body');
+  const $logStream = document.getElementById('log-stream');
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function fmt(n, dec=4) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return n.toFixed(dec);
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleTimeString();
+    } catch { return iso; }
+  }
+
+  function pnlClass(v) {
+    if (v > 0) return 'positive';
+    if (v < 0) return 'negative';
+    return '';
+  }
+
+  function addLog(msg) {
+    const now = new Date().toLocaleTimeString();
+    logEntries.unshift({ ts: now, msg });
+    if (logEntries.length > 50) logEntries.pop();
+    renderLog();
+  }
+
+  function renderLog() {
+    $logStream.innerHTML = logEntries.map(e =>
+      `<div class="entry"><span class="ts">${e.ts}</span>${e.msg}</div>`
+    ).join('');
+  }
+
+  function renderPositions(positions) {
+    const coins = Object.keys(positions || {});
+    if (!coins.length) {
+      $tblPos.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No open positions</td></tr>';
+      return;
+    }
+    $tblPos.innerHTML = coins.map(coin => {
+      const p = positions[coin];
+      const upnl = p.unrealized_pnl || 0;
+      return `<tr>
+        <td>${coin}</td>
+        <td class="num">${fmt(p.size)}</td>
+        <td class="num">${fmt(p.entry_px)}</td>
+        <td class="num">${fmt(p.mark_px)}</td>
+        <td class="num ${pnlClass(upnl)}">${fmt(upnl)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderFills(fills) {
+    const list = (fills || []).slice(0, 20);
+    if (!list.length) {
+      $tblFills.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">No fills yet</td></tr>';
+      return;
+    }
+    $tblFills.innerHTML = list.map(f => {
+      const side = (f.side || '').toUpperCase();
+      return `<tr>
+        <td>${fmtTime(f.time)}</td>
+        <td class="side-${side.toLowerCase()}">${side}</td>
+        <td>${f.symbol || '?'}</td>
+        <td class="num">${fmt(f.size)}</td>
+        <td class="num">${fmt(f.price)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Mode UI update ─────────────────────────────────────────────
+  function updateModeUI(mode) {
+    currentMode = mode;
+    const live = mode === 'LIVE';
+    $badge.className = `badge ${live ? 'live' : 'monitor'}`;
+    $dot.className   = `dot ${live ? 'live' : 'monitor'}`;
+    $text.textContent = mode;
+    $btnToggle.textContent = live ? 'Switch to MONITOR' : 'Switch to LIVE';
+    $btnToggle.className   = live ? 'btn danger' : 'btn';
+  }
+
+  // ── Poll /api/state ────────────────────────────────────────────
+  async function poll() {
+    try {
+      const res = await fetch(`${API}/state`);
+      if (res.status === 404) {
+        $notRun.style.display = 'block';
+        return;
+      }
+      $notRun.style.display = 'none';
+
+      const data = await res.json();
+
+      // Mode
+      updateModeUI(data.mode || 'MONITOR');
+
+      // Cards
+      const pnl = data.pnl || {};
+      const stats = data.stats || {};
+      const daily = pnl.daily || 0;
+      const total = pnl.total || 0;
+
+      const $daily = document.getElementById('card-daily-pnl');
+      $daily.textContent = fmt(daily, 2);
+      $daily.className = `value ${pnlClass(daily)}`;
+
+      const $total = document.getElementById('card-total-pnl');
+      $total.textContent = fmt(total, 2);
+      $total.className = `value ${pnlClass(total)}`;
+
+      document.getElementById('card-fills').textContent   = stats.total_fills   ?? '—';
+      document.getElementById('card-copy').textContent     = stats.copy_trades   ?? '—';
+      document.getElementById('card-errors').textContent   = stats.errors         ?? '—';
+      document.getElementById('card-uptime').textContent   = data.uptime         ?? '—';
+
+      // Positions
+      renderPositions(data.positions);
+
+      // Fills
+      renderFills(data.recent_fills);
+
+      // Log stream — prepend new fills
+      if (data.recent_fills && data.recent_fills.length > 0) {
+        const newest = data.recent_fills[0];
+        if (newest.symbol && newest.side) {
+          addLog(`📥 Fill ${newest.side.toUpperCase()} ${newest.symbol} ${fmt(newest.size)} @ ${fmt(newest.price)}`);
+        }
+      }
+
+    } catch (err) {
+      console.error('poll error', err);
+    }
+  }
+
+  // ── Mode switch ────────────────────────────────────────────────
+  async function switchMode(mode) {
+    try {
+      const res = await fetch(`${API}/mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+      const json = await res.json();
+      if (json.error) {
+        alert('Failed: ' + json.error);
+      } else {
+        addLog(`Mode switch → ${mode.toUpperCase()} requested`);
+        // Update UI optimistically
+        updateModeUI(mode === 'live' ? 'LIVE' : 'MONITOR');
+      }
+    } catch (err) {
+      alert('Request failed: ' + err);
+    }
+  }
+
+  // ── Button handlers ────────────────────────────────────────────
+  $btnToggle.addEventListener('click', () => {
+    const target = currentMode === 'LIVE' ? 'monitor' : 'live';
+    if (target === 'live') {
+      // Show confirm modal
+      pendingSwitch = 'live';
+      $modal.classList.add('open');
+    } else {
+      switchMode('monitor');
+    }
+  });
+
+  $btnConfirm.addEventListener('click', () => {
+    $modal.classList.remove('open');
+    if (pendingSwitch) {
+      switchMode(pendingSwitch);
+      pendingSwitch = null;
+    }
+  });
+
+  $btnCancel.addEventListener('click', () => {
+    $modal.classList.remove('open');
+    pendingSwitch = null;
+  });
+
+  // Close modal on overlay click
+  $modal.addEventListener('click', (e) => {
+    if (e.target === $modal) {
+      $modal.classList.remove('open');
+      pendingSwitch = null;
+    }
+  });
+
+  // ── Init ───────────────────────────────────────────────────────
+  addLog('Dashboard loaded');
+  poll();
+  setInterval(poll, 3000);
+</script>
+</body>
+</html>

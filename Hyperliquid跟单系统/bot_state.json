@@ -1,0 +1,191 @@
+{
+  "updated_at": "2026-06-27T12:47:21",
+  "mode": "MONITOR",
+  "live": false,
+  "target_wallet": "0x3Db8f7bC6D744bEAE458207C85F46B5d0349e5ef",
+  "positions": {
+    "SUI": {
+      "size": 10128.9,
+      "entry_px": 0.71819,
+      "mark_px": 0.71012,
+      "unrealized_pnl": -78.246519
+    },
+    "LINK": {
+      "size": 4627.2,
+      "entry_px": 7.37121,
+      "mark_px": 7.37505,
+      "unrealized_pnl": 16.14512
+    }
+  },
+  "recent_fills": [
+    {
+      "id": 462413553138607,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 366.3,
+      "price": 7.3697,
+      "time": 1782494818549
+    },
+    {
+      "id": 44440090464918,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 305.4,
+      "price": 7.3699,
+      "time": 1782494818549
+    },
+    {
+      "id": 864825418211445,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 47.6,
+      "price": 7.3699,
+      "time": 1782494818549
+    },
+    {
+      "id": 972968928185484,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 42.9,
+      "price": 7.3699,
+      "time": 1782494818549
+    },
+    {
+      "id": 863206883582600,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 20.0,
+      "price": 7.3707,
+      "time": 1782494818549
+    },
+    {
+      "id": 317502337554149,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 58.6,
+      "price": 7.371,
+      "time": 1782494818549
+    },
+    {
+      "id": 1055976752088180,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 3786.4,
+      "price": 7.3715,
+      "time": 1782494818549
+    },
+    {
+      "id": 22262528432714,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 20.0,
+      "price": 7.4861,
+      "time": 1782363728522
+    },
+    {
+      "id": 1001006630928964,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 41.2,
+      "price": 7.4877,
+      "time": 1782363728522
+    },
+    {
+      "id": 1110595700316528,
+      "side": "B",
+      "symbol": "LINK",
+      "size": 1216.2,
+      "price": 7.4877,
+      "time": 1782363728522
+    },
+    {
+      "id": 174242769542803,
+      "side": "B",
+      "symbol": "ETH",
+      "size": 5.9321,
+      "price": 1633.7,
+      "time": 1782363426314
+    },
+    {
+      "id": 71065778757853,
+      "side": "B",
+      "symbol": "ONDO",
+      "size": 156.0,
+      "price": 0.31904,
+      "time": 1782352644310
+    },
+    {
+      "id": 899118091773655,
+      "side": "B",
+      "symbol": "ONDO",
+      "size": 47.0,
+      "price": 0.3191,
+      "time": 1782352644310
+    },
+    {
+      "id": 1107744601743129,
+      "side": "B",
+      "symbol": "ONDO",
+      "size": 1079.0,
+      "price": 0.31915,
+      "time": 1782352644310
+    },
+    {
+      "id": 846214738674759,
+      "side": "B",
+      "symbol": "ONDO",
+      "size": 923.0,
+      "price": 0.31915,
+      "time": 1782352644310
+    },
+    {
+      "id": 1087082863037164,
+      "side": "B",
+      "symbol": "ONDO",
+      "size": 11033.0,
+      "price": 0.31921,
+      "time": 1782352644310
+    },
+    {
+      "id": 1092939153742903,
+      "side": "B",
+      "symbol": "xyz:BRENTOIL",
+      "size": 6.79,
+      "price": 73.648,
+      "time": 1782345869951
+    },
+    {
+      "id": 473678061587850,
+      "side": "B",
+      "symbol": "xyz:CL",
+      "size": 7.133,
+      "price": 70.107,
+      "time": 1782345875373
+    },
+    {
+      "id": 388274031672336,
+      "side": "B",
+      "symbol": "xyz:GOLD",
+      "size": 0.1246,
+      "price": 4014.0,
+      "time": 1782345859691
+    },
+    {
+      "id": 2872050602993,
+      "side": "B",
+      "symbol": "xyz:SILVER",
+      "size": 0.29,
+      "price": 57.689,
+      "time": 1782345864597
+    }
+  ],
+  "pnl": {
+    "daily": 0.0,
+    "total": 0.0
+  },
+  "stats": {
+    "total_fills": 1374,
+    "copy_trades": 0,
+    "errors": 219
+  }
+}
